@@ -83,4 +83,4 @@ def test_suite(tmp_path):
     assert "suite marker" in "".join(output)
     logs = list((tmp_path / "outputs").glob("*/debug.log"))
     assert logs
-    assert "SCRIPT START" in logs[0].read_text()
+    assert "Suite overall result: PASS" in logs[0].read_text(encoding="utf-8")
