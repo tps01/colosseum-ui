@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -45,6 +46,8 @@ _FILE_STATUS_WIDTH = 92
 _FILE_NAME_WIDTH = 280
 _DEFAULT_SIZE = (1100, 746)
 _MINIMUM_SIZE = (760, 580)
+_STATUS_VERTICAL_MARGIN = 4
+_STATUS_RIGHT_MARGIN = 8
 
 
 class Inspector(QMainWindow):
@@ -124,6 +127,9 @@ class Inspector(QMainWindow):
         self.model.setHorizontalHeaderLabels(["Files", "Status"])
         self.tree.setModel(self.model)
         self.tree.setHeaderHidden(True)
+        self.tree.header().setStretchLastSection(False)
+        self.tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.tree.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         self.tree.setTreePosition(0)
         self._output_rows = {}
         self.tree.expanded.connect(self.populate_output_group)
@@ -156,8 +162,13 @@ class Inspector(QMainWindow):
         self.appearance.addItems(["System", "Light", "Dark"])
         self.appearance.setAccessibleName("Appearance")
         self.appearance.currentTextChanged.connect(self.change_theme)
-        self.statusBar().addPermanentWidget(QLabel("Appearance"))
-        self.statusBar().addPermanentWidget(self.appearance)
+        appearance_container = QWidget()
+        appearance_layout = QHBoxLayout(appearance_container)
+        appearance_layout.setContentsMargins(0, _STATUS_VERTICAL_MARGIN, _STATUS_RIGHT_MARGIN, _STATUS_VERTICAL_MARGIN)
+        appearance_layout.setSpacing(_GAP)
+        appearance_layout.addWidget(QLabel("Appearance"))
+        appearance_layout.addWidget(self.appearance)
+        self.statusBar().addPermanentWidget(appearance_container)
         QApplication.instance().styleHints().colorSchemeChanged.connect(self.system_theme_changed)
         apply_theme(self, "System")
         self.timer = QTimer(self)
@@ -431,6 +442,7 @@ class Inspector(QMainWindow):
             status_item = QStandardItem(self.display_status(row.status))
             status_item.setForeground(QBrush(self.status_color(row.status)))
             status_item.setEditable(False)
+            status_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             status_item.setData(str(row.entry.path), Qt.ItemDataRole.UserRole)
             status_item.setData(str(row.entry.path), Qt.ItemDataRole.UserRole + 1)
             item = QStandardItem(row.entry.path.name)
@@ -446,6 +458,7 @@ class Inspector(QMainWindow):
                 else:
                     child_status = QStandardItem(self.display_status(child.status))
                     child_status.setForeground(QBrush(self.status_color(child.status)))
+                    child_status.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                     child_status.setData(str(child.entry.path), Qt.ItemDataRole.UserRole)
                     child_item = QStandardItem(child.entry.path.name)
                     child_item.setForeground(QBrush(self.palette().color(self.palette().ColorRole.Text)))
