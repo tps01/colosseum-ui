@@ -1,0 +1,163 @@
+# Rules
+
+## Approved Software Licenses
+
+Only the following licenses are allowed:
+
+- Apache License 2.0
+- Boost Software License
+- BSD 2-Clause License
+- BSD 3-Clause License
+- CMU/CMD License
+- CPL v1.0
+- CPOL v1.02
+- ISC License
+- ICU License 1.8.1
+- Microsoft Public License
+- MIT License
+- Expat License
+- MIT-X11 License
+- X11 License
+- X License
+- MIT/X Consortium License
+- Historical Permission Notice and Disclaimer (HPND)
+- GNU Lesser General Public License (LGPL) - allowed only when used unmodified
+  (no source modifications)
+- NASA Open Source Agreement 1.3
+- Public Domain
+- Python Software Foundation License v2 (Python 2.0.1 and greater)
+- SGI Free Software License B v2.0
+- SIL Open Font License (OFL) 1.1
+- Ubuntu Font License 1.0
+- Unicode License
+- Unlicense
+- W3C Software and Document License
+- W3C Software Notice and License
+- Zlib License
+
+---
+
+## What This Means in Practice
+
+- Before adding or updating dependencies, verify license compatibility against
+  this allowlist.
+- If dependency license metadata is ambiguous, treat it as unapproved until
+  clarified.
+- LGPL dependencies are allowed only if the LGPL-covered source is not modified
+  in this project.
+- If LGPL-covered source modifications are required, treat as non-compliant
+  unless explicitly re-approved and documented before merge.
+- If a dependency violates this rule, do not add it; propose a compliant
+  alternative.
+- If an existing dependency is found non-compliant, flag it immediately for
+  remediation.
+
+## Packaging
+
+- Put runtime packages in `[project].dependencies` in `pyproject.toml`. Wheel
+  and offline installs follow that list only (what test-script authors need).
+- Put developer, test, static-analysis, and docs tooling in `requirements.txt`
+  (starts with `-e .`). Developers and CI use
+  `python -m pip install -r requirements.txt`.
+- Do not use optional extras such as `[web]`, `[desktop]`, `[test]`,
+  `[static]`, or `[docs]` for drivers or tooling.
+- Platform- or Python-version environment markers on individual dependencies are
+  fine when a package only applies on that platform.
+
+## Testing
+
+- Only write high value unit tests.
+- Do not prioritize code coverage for the sake of coverage. Better coverage can
+  be achieved by keeping the project small and maintainable.
+- Static analysis does not need to apply to support scripts or tests. That level
+  of meta-testing is not needed for this project.
+
+## Code Quality
+
+- Do not add anything beyond what was asked. No scaffolding, no-ops, exceptions,
+  or stubs outside that scope. If the work needs a new system or a meaningful
+  scope increase, ask first.
+- Do not stub out planned features; that's pointless. This applies to code
+  infrastructure, tests, exceptions, etc.
+- Do not over-use helper functions or lambda functions. While they have a place,
+  sometimes it's more clear to just do a one-off operation in-line.
+- Do not overengineer. Not everything needs an entire supporting system.
+  Minimizing the footprint of your code is paramount for human readability.
+- Do not add fallback mechanisms for everything. Elaborate error handling is
+  often unnecessary.
+
+### Antipatterns
+
+- **Magic numbers and values:** Do not scatter unexplained literal values through
+  implementation code. Use descriptive named constants for colors, timeouts,
+  thresholds, protocol values and layout dimensions whose meaning is not obvious.
+  Include units in names where useful, such as `_READ_TIMEOUT_S`.
+  For example, name a light/dark color pair `_PURPLE` or `_GREEN` and reference
+  it in a status palette rather than repeating hex codes in widgets or mappings.
+  Keep constants near their owning code and reuse existing definitions. Obvious
+  literals such as zero-based indexes do not need artificial names; fixed values
+  prescribed by an external format should have a named constant or a source comment.
+
+### Minimizing footprint (lessons from runtime slim)
+
+Core runtime reached ~5,000 non-blank lines across 52 files before slimming to
+~3,700
+lines in 41 files. Most growth was avoidable. Agents must treat **small diffs
+and net
+deletions** as success criteria, not just “tests pass.”
+
+**Distill before executing.** At task start, boil down the user request, plan,
+or
+exploration notes to: *what must change*, *what must not regress*, and *what is
+out of
+scope*. Do not implement every bullet in a long plan. Implement what satisfies
+acceptance.
+
+**Inventory before adding.** Search the repo for existing types, helpers, and
+module
+boundaries. Extend `manager.py` rather than add `read.py`; extend `runtime.py`
+rather
+than add `output/` + `runner/_paths.py` + shims. Duplicate layers were a major
+source of
+bloat.
+
+**Deletion is a valid and often preferable fix.** When all callers are in-repo,
+prefer:
+
+- removing unused modules (e.g. `compatibility/`, `gui/loaders.py`,
+  `resource_cache.py`);
+- merging thin files (`records.py` → `manager.py`, `_metadata.py` → `wats.py`);
+- dropping speculative APIs (`register_artifact`, public `read_from_path`) and
+  migrating
+  the few callers;
+- reverting refactors that add net LOC without behavioral benefit.
+
+State deletions explicitly in summaries. A PR that deletes 500 lines and adds 50
+is
+often better than one that adds 200.
+
+**Avoid these growth patterns.**
+
+| Do not | Do instead |
+| --- | --- |
+| New package per concern | Merge modules; <~100 LOC |
+| Public API in core for plugins | Local `_paths.py` / `_cache.py` |
+| Compatibility shim layers | Update callers in same change |
+| Async GUI loaders unless asked | Minimal operator workflow |
+| Factory before 3rd duplication | Inline until three call sites |
+
+**Scope guardrails for core.** Protected end-user behavior is defined by
+user-facing docs,
+`docs/testing/e2e-spec.md`, and existing e2e tests. Everything else is fair game
+for
+consolidation. Device drivers, config TOML export, and transport helpers belong
+in plugins.
+
+**Static analysis dependencies.** Do not cap versions of ruff, mypy, bandit, or
+vulture
+in `pyproject.toml` (use `>=` lower bounds only) so CI can adopt new rules as
+tools
+update.
+
+## Qt boundary
+Never modify Qt, PySide6 or Shiboken. No patches, forks or monkey-patching. Use documented APIs only; preserve vendor notices.

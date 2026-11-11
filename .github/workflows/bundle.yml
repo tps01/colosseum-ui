@@ -1,0 +1,20 @@
+name: Offline bundle
+on: workflow_dispatch
+jobs:
+  bundle:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/checkout@v4
+        with:
+          repository: tps01/colosseum-core
+          ref: develop
+          path: core-checkout
+      - run: python scripts/ci/build_offline_wheelhouse.py --also-build core-checkout --archive
+      - uses: actions/upload-artifact@v4
+        with:
+          name: colosseum-ui-offline
+          path: colosseum-ui-offline-*.zip
