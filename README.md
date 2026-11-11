@@ -1,27 +1,43 @@
 # Colosseum UI
 
-Optional desktop inspector, distinct from the colosseum-gui automation plugin.
-Python 3.10+. Install: `python -m pip install -r requirements.txt`.
-Launch from your workspace: `python -m colosseum_ui` or `colosseum-ui`.
+Optional Qt desktop runner and inspector for Colosseum. Distinct from the
+`colosseum-gui` automation plugin (`col.gui.*`).
 
-Gate 1: read-only history, logs, summaries and suite navigation. Gate 2 adds execution inputs, live output, asynchronous Stop and close handling. Polish follows in gate 3, core cutover and offline bundles in gate 4. Core GUI remains available until cutover.
+Docs: <https://tps01.github.io/colosseum-ui/>
 
-Qt dependencies remain unmodified. Run `python -m pytest` and `python -m ruff check .`.
+Python 3.10+. Install a release wheel or, for development:
 
-Gate 3 adds System/Light/Dark appearance, accessible compact pickers, log wrapping, paged raw logs (all text retained in temporary storage), and batched history population. Previous/Next page navigate large logs. Appearance remains session-only.
-
-Desktop GUI: install the separate `colosseum-ui` wheel (Python 3.10+), then run `colosseum --gui`. Core alone returns an installation diagnostic. Qt dependencies are unmodified.
-
-Build a platform-specific offline bundle from the UI repo:
-
+```sh
+python -m pip install -r requirements.txt
 ```
+
+Launch from an environment that already has `colosseum-core`:
+
+```sh
+colosseum --gui
+# or
+colosseum-ui
+python -m colosseum_ui
+```
+
+Core alone returns an installation diagnostic for `--gui` until this package is
+installed. Qt dependency pins stay in `pyproject.toml` (do not loosen casually).
+
+## Offline bundles
+
+Build a platform-specific offline archive (includes core + UI wheels):
+
+```sh
 python scripts/ci/build_offline_wheelhouse.py --also-build ../colosseum-core --archive
 ```
 
-Use a fresh wheelhouse directory. Bundles contain the local core/UI wheels and
-unmodified third-party wheels with vendor notices. Run install.bat (Windows) or
-install.sh (Linux), then start_gui.bat/start_gui.sh. Core-only bundles expose CLI
-launchers only. Frozen core executables deliberately exclude colosseum_ui.
+Release tags (`v*`) publish sdist/wheel and multi-platform offline houses via
+GitHub Actions. Manual Windows bundles remain available from the Bundle workflow.
 
-The initial local migration wheel is a development artifact; publish a coordinated
-core/UI release before directing existing users to upgrade through release channels.
+## Develop
+
+```sh
+python -m pytest
+python -m ruff check colosseum_ui
+python scripts/build_pages.py
+```
