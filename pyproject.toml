@@ -8,7 +8,12 @@ version = "0.1.0"
 description = "Optional Colosseum desktop runner and inspector"
 requires-python = ">=3.10"
 license = "MIT"
-dependencies = ["colosseum-core>=0.18.8,<0.19", "PySide6-Essentials>=6.10,<7"]
+dependencies = [
+  "colosseum-core>=0.18.8,<0.19",
+  # Qt 6.12 aborts while populating large trees on Python 3.10 (Linux CI).
+  "PySide6-Essentials>=6.10,<6.12; python_version < '3.11'",
+  "PySide6-Essentials>=6.10,<7; python_version >= '3.11'",
+]
 
 [project.gui-scripts]
 colosseum-ui = "colosseum_ui.app:main"

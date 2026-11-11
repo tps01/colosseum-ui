@@ -24,9 +24,6 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1
       - run: python -m pip install ./core-checkout
-      - name: Use earlier Qt wheel on Python 3.10
-        if: matrix.python == '3.10'
-        run: python -m pip install "PySide6-Essentials>=6.10,<6.12"
       - run: python -m pip install -r requirements.txt
       - run: python -X faulthandler -m pytest -v -s
       - run: python -m ruff check colosseum_ui
