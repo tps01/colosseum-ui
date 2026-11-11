@@ -1,0 +1,143 @@
+# Tag vX.Y.Z on main (or workflow_dispatch for artifacts only).
+# Thin orchestration: real logic lives in scripts/ci/ (GHA/Bamboo agnostic).
+
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-sdist-wheel:
+    name: sdist and wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Build distributions
+        run: python scripts/ci/build_dist.py
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: colosseum-ui-dist
+          path: dist/*
+          if-no-files-found: error
+
+  build-offline-wheelhouse:
+    name: offline (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, windows-latest]
+        python-version: ["3.10", "3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: colosseum-ui
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Resolve colosseum-core ref
+        working-directory: colosseum-ui
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m pip install -q packaging
+          CORE_REF=$(python scripts/ci/resolve_core_ref.py)
+          echo "CORE_REF=${CORE_REF}" >> "$GITHUB_ENV"
+          test -n "$CORE_REF"
+      - uses: actions/checkout@v7
+        with:
+          repository: tps01/colosseum-core
+          ref: ${{ env.CORE_REF }}
+          path: colosseum-core
+      - name: Build offline wheelhouse archive
+        working-directory: colosseum-ui
+        run: >
+          python scripts/ci/build_offline_wheelhouse.py
+          --also-build ../colosseum-core
+          --core-ref ${{ env.CORE_REF }}
+          --archive
+      - name: Upload offline wheelhouse
+        uses: actions/upload-artifact@v7
+        with:
+          name: offline-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: |
+            colosseum-ui/colosseum-ui-offline-*.zip
+            colosseum-ui/colosseum-ui-offline-*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    name: publish GitHub release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: [build-sdist-wheel, build-offline-wheelhouse]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify tag matches pyproject version
+        run: python scripts/ci/verify_release_tag.py
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+
+      - name: Flatten release files
+        run: |
+          mkdir -p release-files
+          find release-assets -type f \( -name '*.whl' -o -name '*.tar.gz' -o -name '*.zip' \) \
+            -exec cp -t release-files {} +
+          ls -la release-files
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Colosseum UI ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            ## Install from release assets
+
+            Download the wheel below and replace `<version>` with its version.
+            Requires Python 3.10+ and a compatible `colosseum-core` install.
+
+            ```bash
+            python -m pip install "./colosseum_ui-<version>-py3-none-any.whl"
+            ```
+
+            Launch with `colosseum --gui`, `colosseum-ui`, or `python -m colosseum_ui`.
+
+            ## Offline wheelhouses
+
+            Archives include `colosseum-core` plus third-party deps (including Qt).
+            Wheels are under `wheels/`; use the operator scripts at the archive root.
+            Pick the archive that matches your OS, **CPU arch**, and Python.
+
+            - Windows: `colosseum-ui-offline-windows-py{3.10,3.12,3.14}.zip` → `install.bat`, then `start_gui.bat`
+            - Linux x86_64: `colosseum-ui-offline-linux-x86_64-py{3.10,3.12,3.14}.tar.gz` → `./install.sh`
+            - Linux aarch64: `colosseum-ui-offline-linux-aarch64-py{3.10,3.12,3.14}.tar.gz` → `./install.sh`
+
+            ```bash
+            tar -xzf colosseum-ui-offline-linux-aarch64-py<ver>.tar.gz -C wheelhouse
+            cd wheelhouse && chmod +x install.sh start_*.sh && ./install.sh
+            ```
+
+            Docs: https://tps01.github.io/colosseum-ui/
+
+          files: release-files/*
+          fail_on_unmatched_files: true

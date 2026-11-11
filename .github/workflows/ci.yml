@@ -1,5 +1,16 @@
 name: CI
-on: [push, pull_request, workflow_dispatch]
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     strategy:
@@ -11,11 +22,11 @@ jobs:
     env:
       QT_QPA_PLATFORM: offscreen
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: tps01/colosseum-core
           ref: develop
@@ -28,3 +39,26 @@ jobs:
       - run: python -X faulthandler -m pytest -v -s
       - run: python -m ruff check colosseum_ui
       - run: python -m build --wheel
+
+  docs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: tps01/colosseum-core
+          ref: develop
+          path: .deps/colosseum-core
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc libegl1 libgl1
+          python -m pip install --upgrade pip
+          python -m pip install "sphinx>=7.0,<9"
+          python -m pip install -e .deps/colosseum-core
+          python -m pip install -r requirements.txt
+      - name: Build documentation
+        run: python scripts/build_pages.py
