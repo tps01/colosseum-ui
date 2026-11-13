@@ -84,3 +84,24 @@ def test_suite(tmp_path):
     logs = list((tmp_path / "outputs").glob("*/debug.log"))
     assert logs
     assert "Suite overall result: PASS" in logs[0].read_text(encoding="utf-8")
+
+
+def test_dry_run_argument():
+    for kind in ("run", "run-suite"):
+        assert "--dry-run" in RunRequest(kind, "sample", dry_run=True).arguments()
+
+
+def test_runner_accepts_prompt_input(tmp_path):
+    app = QApplication.instance() or QApplication([])
+    worker = Execution(tmp_path)
+    output, results = [], []
+    worker.output.connect(output.append)
+    worker.completed.connect(results.append)
+    script = tmp_path / "prompt_test.py"
+    script.write_text("def main():\n    print('PROMPT READY', flush=True)\n    print('ANSWER=' + input(), flush=True)\n")
+    worker.start(RunRequest("run", str(script)))
+    wait(app, lambda: "PROMPT READY" in "".join(output) or bool(results))
+    worker.send_input("response")
+    wait(app, lambda: bool(results))
+    assert results[-1] == 0
+    assert "ANSWER=response" in "".join(output)

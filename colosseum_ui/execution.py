@@ -18,6 +18,7 @@ class RunRequest:
     metadata: str = ""
     debug: bool = False
     no_sleep: bool = False
+    dry_run: bool = False
 
     def arguments(self):
         args = ["-u", "-m", "colosseum.runner.cli", self.kind, self.path]
@@ -28,6 +29,8 @@ class RunRequest:
             args.append("--debug")
         if self.no_sleep:
             args.append("--no-sleep")
+        if self.dry_run:
+            args.append("--dry-run")
         return args
 
 
@@ -83,6 +86,10 @@ class Execution(QObject):
         text = self.decoder.decode(bytes(self.process.readAllStandardOutput()))
         if text:
             self.output.emit(text)
+
+    def send_input(self, value):
+        if self.state == "Running":
+            self.process.write((value + "\n").encode("utf-8"))
 
     def stop(self):
         if not self.active:
