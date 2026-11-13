@@ -16,5 +16,5 @@ jobs:
       - run: python scripts/ci/build_offline_wheelhouse.py --also-build core-checkout --archive
       - uses: actions/upload-artifact@v4
         with:
-          name: colosseum-ui-offline
-          path: colosseum-ui-offline-*.zip
+          name: colosseum-extensions-offline
+          path: colosseum-extensions-offline-*.zip

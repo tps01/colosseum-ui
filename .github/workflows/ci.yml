@@ -37,7 +37,7 @@ jobs:
       - run: python -m pip install ./core-checkout
       - run: python -m pip install -r requirements.txt
       - run: python -X faulthandler -m pytest -v -s
-      - run: python -m ruff check colosseum_ui
+      - run: python -m ruff check colosseum_extensions
       - run: python -m build --wheel
 
   docs:
