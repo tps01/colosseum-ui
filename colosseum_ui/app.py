@@ -121,6 +121,11 @@ class Inspector(QMainWindow):
         paging.addWidget(self.page_label)
         paging.addStretch()
         log_layout.addWidget(self.log, 1)
+        self.input_line = QLineEdit()
+        self.input_line.setPlaceholderText("Enter a response and press Enter")
+        self.input_line.setAccessibleName("Runner input")
+        self.input_line.returnPressed.connect(self.send_input)
+        log_layout.addWidget(self.input_line)
         log_layout.addLayout(paging)
         self.log.page_changed.connect(self.update_paging)
         self.log.setReadOnly(True)
@@ -285,9 +290,11 @@ class Inspector(QMainWindow):
         actions.addWidget(self.stop_button)
         self.debug = QCheckBox("Debug")
         self.no_sleep = QCheckBox("No sleep")
+        self.dry_run = QCheckBox("Dry run")
         actions.addStretch()
         actions.addWidget(self.debug)
         actions.addWidget(self.no_sleep)
+        actions.addWidget(self.dry_run)
         group_layout.addLayout(actions)
         layout.addWidget(group)
 
@@ -314,6 +321,8 @@ class Inspector(QMainWindow):
         self.run_button.setEnabled(not self.execution.active and suffix in {".py", ".toml"})
         self.run_button.setVisible(suffix in {".py", ".toml"})
         self.stop_button.setEnabled(self.execution.state in {"Starting", "Running"})
+        self.input_line.setEnabled(self.execution.state == "Running")
+        self.dry_run.setEnabled(not self.execution.active)
         self.statusBar().showMessage(self.execution.state)
 
     def run_selected_file(self):
@@ -331,7 +340,12 @@ class Inspector(QMainWindow):
         self.tabs.setCurrentWidget(self.log)
         values = {key: field.text().strip() for key, field in self.fields.items()}
         self.execution.start(RunRequest(kind, values[name], values["Config"], values["Parameters"],
-                                        values["Metadata"], self.debug.isChecked(), self.no_sleep.isChecked()))
+                                        values["Metadata"], self.debug.isChecked(), self.no_sleep.isChecked(),
+                                        self.dry_run.isChecked()))
+
+    def send_input(self):
+        self.execution.send_input(self.input_line.text())
+        self.input_line.clear()
 
     def show_live(self):
         self.selected = None
