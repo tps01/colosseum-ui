@@ -72,6 +72,22 @@ class Inspector(QMainWindow):
         layout.setContentsMargins(_MARGIN, _MARGIN, _MARGIN, _GAP)
         layout.setSpacing(_GAP)
         self.build_form(layout)
+        self._build_output_toolbar(layout)
+        splitter = QSplitter()
+        self._build_log_panel()
+        self._build_summary_panel()
+        splitter.addWidget(self.tabs)
+        self._build_run_browser(splitter)
+        layout.addWidget(splitter, 1)
+        self.setCentralWidget(body)
+        self._build_appearance_controls()
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.poll)
+        self.timer.start(_POLL_MS)
+        self.refresh()
+        self.update_controls()
+
+    def _build_output_toolbar(self, layout):
         toolbar = QHBoxLayout()
         for label, callback in (("Live output", self.show_live), ("Open output folder", self.open_folder)):
             button = QPushButton(label)
@@ -83,7 +99,8 @@ class Inspector(QMainWindow):
             QPlainTextEdit.LineWrapMode.WidgetWidth if checked else QPlainTextEdit.LineWrapMode.NoWrap))
         toolbar.addWidget(self.wrap)
         layout.addLayout(toolbar)
-        splitter = QSplitter()
+
+    def _build_log_panel(self):
         self.tabs = QTabWidget()
         self.log = Console()
         log_panel = QWidget()
@@ -116,6 +133,8 @@ class Inspector(QMainWindow):
         self.log.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
         self.log.setPlaceholderText("Select a run to inspect its debug log.")
         self.tabs.addTab(log_panel, "Log")
+
+    def _build_summary_panel(self):
         self.summary_content = QWidget()
         self.summary_layout = QVBoxLayout(self.summary_content)
         self.summary_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -125,7 +144,8 @@ class Inspector(QMainWindow):
         self.tabs.addTab(self.summary_scroll, "Summary")
         self.tabs.currentChanged.connect(self.summary_tab_changed)
         self.current_summary = None
-        splitter.addWidget(self.tabs)
+
+    def _build_run_browser(self, splitter):
         self.tree = QTreeView()
         self.tree.setUniformRowHeights(True)
         self.model = QStandardItemModel()
@@ -161,8 +181,8 @@ class Inspector(QMainWindow):
         self.tree.selectionModel().currentChanged.connect(self.select_run)
         splitter.addWidget(self.right_tabs)
         splitter.setSizes([680, 400])
-        layout.addWidget(splitter, 1)
-        self.setCentralWidget(body)
+
+    def _build_appearance_controls(self):
         self.appearance = QComboBox()
         self.appearance.addItems(["System", "Light", "Dark"])
         self.appearance.setAccessibleName("Appearance")
@@ -176,11 +196,6 @@ class Inspector(QMainWindow):
         self.statusBar().addPermanentWidget(appearance_container)
         QApplication.instance().styleHints().colorSchemeChanged.connect(self.system_theme_changed)
         apply_theme(self, "System")
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.poll)
-        self.timer.start(_POLL_MS)
-        self.refresh()
-        self.update_controls()
 
     def change_theme(self, value):
         apply_theme(self, value)
@@ -452,32 +467,31 @@ class Inspector(QMainWindow):
         rows = iter(self._output_rows.get(directory, ()))
         generation = self.generation
 
-        def add(parent, row):
+        def make_items(row, *, group_row):
+            path = str(row.entry.path)
             status_item = QStandardItem(self.display_status(row.status))
             status_item.setForeground(QBrush(self.status_color(row.status)))
-            status_item.setEditable(False)
             status_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            status_item.setData(str(row.entry.path), Qt.ItemDataRole.UserRole)
-            status_item.setData(str(row.entry.path), Qt.ItemDataRole.UserRole + 1)
+            status_item.setData(path, Qt.ItemDataRole.UserRole)
             item = QStandardItem(row.entry.path.name)
-            item.setEditable(False)
-            item.setToolTip(str(row.entry.path))
-            item.setData(str(row.entry.path), Qt.ItemDataRole.UserRole)
-            item.setData(str(row.entry.path), Qt.ItemDataRole.UserRole + 1)
             item.setForeground(QBrush(self.palette().color(self.palette().ColorRole.Text)))
+            item.setToolTip(path)
+            item.setData(path, Qt.ItemDataRole.UserRole)
+            if group_row:
+                item.setEditable(False)
+                status_item.setEditable(False)
+                item.setData(path, Qt.ItemDataRole.UserRole + 1)
+                status_item.setData(path, Qt.ItemDataRole.UserRole + 1)
+            return item, status_item
+
+        def add(parent, row):
+            item, status_item = make_items(row, group_row=True)
             parent.appendRow([item, status_item])
             for child in row.children:
                 if child.children:
                     add(item, child)
                 else:
-                    child_status = QStandardItem(self.display_status(child.status))
-                    child_status.setForeground(QBrush(self.status_color(child.status)))
-                    child_status.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                    child_status.setData(str(child.entry.path), Qt.ItemDataRole.UserRole)
-                    child_item = QStandardItem(child.entry.path.name)
-                    child_item.setForeground(QBrush(self.palette().color(self.palette().ColorRole.Text)))
-                    child_item.setToolTip(str(child.entry.path))
-                    child_item.setData(str(child.entry.path), Qt.ItemDataRole.UserRole)
+                    child_item, child_status = make_items(child, group_row=False)
                     item.appendRow([child_item, child_status])
             if row.entry.path == self.selected:
                 self.tree.setCurrentIndex(item.index())
