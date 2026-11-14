@@ -6,7 +6,7 @@ provides the Qt desktop runner and inspector. It is distinct from the
 
 Docs: <https://tps01.github.io/colosseum-extensions/>
 
-Python 3.10+ and `colosseum-core` 0.18.10 or newer (within the 0.18 series).
+Python 3.10+ and `colosseum-core` 0.18.11 or newer (within the 0.18 series).
 Install a release wheel or, for development:
 
 ```sh

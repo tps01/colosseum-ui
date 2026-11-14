@@ -9,7 +9,7 @@ Requirements
 ------------
 
 * Python 3.10 or newer
-* ``colosseum-core`` 0.18.10 or newer in the 0.18 series, in the same virtual environment
+* ``colosseum-core`` 0.18.11 or newer in the 0.18 series, in the same virtual environment
 * A display (or ``QT_QPA_PLATFORM=offscreen`` for headless smoke only)
 
 Install
@@ -34,6 +34,11 @@ Any of these work after install::
 
 Core alone prints an installation diagnostic when ``--gui`` is used without
 ``colosseum-extensions``.
+
+The UI remembers selected files, appearance, window layout, and working directory
+in per-user settings. The working directory controls relative paths and output
+history. Nonempty bench config and metadata environment variables take precedence
+over saved selections. No run starts automatically on reopening.
 
 Offline bundles
 ---------------

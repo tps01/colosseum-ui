@@ -1,10 +1,11 @@
 """Desktop execution and artifact inspection."""
 import os
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt, QTimer, QUrl
+from PySide6.QtCore import QSettings, QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import QBrush, QColor, QDesktopServices, QFontDatabase, QIcon, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QApplication,
@@ -51,9 +52,12 @@ _STATUS_RIGHT_MARGIN = 8
 
 
 class Inspector(QMainWindow):
-    def __init__(self, cwd=None):
+    def __init__(self, cwd=None, settings=None):
         super().__init__()
-        self.cwd = cwd or Path.cwd()
+        self.settings = settings or QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "Colosseum", "UI")
+        saved_cwd = Path(str(self.settings.value("working_directory", cwd or Path.cwd())))
+        self.cwd = Path(cwd) if cwd is not None else saved_cwd if saved_cwd.is_dir() else Path.cwd()
+        self.missing_cwd = str(saved_cwd) if cwd is None and not saved_cwd.is_dir() else ""
         self.execution = Execution(self.cwd, self)
         self.execution.output.connect(self.append_output)
         self.execution.state_changed.connect(self.update_controls)
@@ -74,6 +78,7 @@ class Inspector(QMainWindow):
         self.build_form(layout)
         self._build_output_toolbar(layout)
         splitter = QSplitter()
+        self.splitter = splitter
         self._build_log_panel()
         self._build_summary_panel()
         splitter.addWidget(self.tabs)
@@ -81,6 +86,18 @@ class Inspector(QMainWindow):
         layout.addWidget(splitter, 1)
         self.setCentralWidget(body)
         self._build_appearance_controls()
+        for name, field in self.fields.items():
+            env = {"Config": "COLOSSEUM_BENCH_CONFIG", "Metadata": "COLOSSEUM_METADATA_PATH"}.get(name)
+            field.setText((os.environ.get(env, "") if env else "") or str(self.settings.value("files/" + name, "")))
+        self.appearance.setCurrentText(str(self.settings.value("appearance", "System")))
+        self.wrap.setChecked(self.settings.value("wrap", False, type=bool))
+        self.additional_button.setChecked(self.settings.value("additional", False, type=bool))
+        geometry = self.settings.value("geometry")
+        if geometry is not None:
+            self.restoreGeometry(geometry)
+        state = self.settings.value("splitter")
+        if state is not None:
+            splitter.restoreState(state)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.poll)
         self.timer.start(_POLL_MS)
@@ -225,6 +242,14 @@ class Inspector(QMainWindow):
         form = QFormLayout()
         form.setHorizontalSpacing(_MARGIN)
         form.setVerticalSpacing(_GAP)
+        cwd_row = QHBoxLayout()
+        self.cwd_field = QLineEdit(str(self.cwd))
+        self.cwd_field.setReadOnly(True)
+        self.cwd_button = QPushButton("Browse")
+        self.cwd_button.clicked.connect(self.choose_cwd)
+        cwd_row.addWidget(self.cwd_field)
+        cwd_row.addWidget(self.cwd_button)
+        form.addRow("Working directory", cwd_row)
         self.fields = {}
         additional_rows = QVBoxLayout()
         additional_rows.setContentsMargins(0, 0, 0, 0)
@@ -278,10 +303,12 @@ class Inspector(QMainWindow):
         self.additional_widget.setVisible(False)
         form.addRow(self.additional_widget)
         group_layout.addLayout(form)
+        self.cwd_notice = QLabel(f"Saved working directory not found: {self.missing_cwd}" if self.missing_cwd else "")
+        group_layout.addWidget(self.cwd_notice)
         actions = QHBoxLayout()
         self.run_button = QPushButton()
         self.run_button.setProperty("primary", True)
-        self.run_button.hide()
+        self.run_button.setText("Run")
         self.run_button.clicked.connect(self.run_selected_file)
         actions.addWidget(self.run_button)
         self.stop_button = QPushButton("Stop")
@@ -296,7 +323,25 @@ class Inspector(QMainWindow):
         actions.addWidget(self.no_sleep)
         actions.addWidget(self.dry_run)
         group_layout.addLayout(actions)
+        self.validation_label = QLabel()
+        group_layout.addWidget(self.validation_label)
         layout.addWidget(group)
+
+    def choose_cwd(self):
+        path = QFileDialog.getExistingDirectory(self, "Working directory", str(self.cwd))
+        if not path:
+            return
+        for field in self.fields.values():
+            value = field.text().strip()
+            if value and not Path(value).is_absolute():
+                field.setText(str((self.cwd / value).resolve()))
+        self.cwd = Path(path)
+        self.cwd_notice.clear()
+        self.cwd_field.setText(path)
+        self.execution.process.setWorkingDirectory(path)
+        self.selected = None
+        self.refresh()
+        self.update_controls()
 
     def toggle_additional(self, expanded):
         self.additional_widget.setVisible(expanded)
@@ -306,8 +351,11 @@ class Inspector(QMainWindow):
         )
 
     def browse(self, name):
-        pattern = "Test and suite (*.py *.toml);;All files (*)" if name == "Test / Suite" else "TOML (*.toml);;All files (*)"
-        path, _ = QFileDialog.getOpenFileName(self, name, str(self.cwd), pattern)
+        pattern = ("Test and suite (*.py *.toml);;All files (*)" if name == "Test / Suite" else
+                   "YAML (*.yaml *.yml);;All files (*)" if name == "Metadata" else "TOML (*.toml);;All files (*)")
+        value = self.fields[name].text().strip()
+        parent = (self.cwd / value).parent if value else self.cwd
+        path, _ = QFileDialog.getOpenFileName(self, name, str(parent if parent.is_dir() else self.cwd), pattern)
         if path:
             self.fields[name].setText(path)
 
@@ -317,9 +365,16 @@ class Inspector(QMainWindow):
         path = self.fields["Test / Suite"].text().strip()
         source = self.cwd / path
         suffix = source.suffix.lower() if source.is_file() else ""
-        self.run_button.setText("Run test" if suffix == ".py" else "Run suite" if suffix == ".toml" else "")
-        self.run_button.setEnabled(not self.execution.active and suffix in {".py", ".toml"})
-        self.run_button.setVisible(suffix in {".py", ".toml"})
+        self.run_button.setText("Run test" if suffix == ".py" else "Run suite" if suffix == ".toml" else "Run")
+        problem = "Select a test or suite." if not path else "Test or suite file not found." if not source.is_file() else "Choose a .py or .toml file." if suffix not in {".py", ".toml"} else ""
+        for name in ("Config", "Parameters", "Metadata"):
+            value = self.fields[name].text().strip()
+            if not problem and value and not (self.cwd / value).is_file():
+                problem = f"{name} file not found."
+        if hasattr(self, "validation_label"):
+            self.validation_label.setText(problem)
+        self.run_button.setEnabled(not self.execution.active and not problem)
+        self.cwd_button.setEnabled(not self.execution.active)
         self.stop_button.setEnabled(self.execution.state in {"Starting", "Running"})
         self.input_line.setEnabled(self.execution.state == "Running")
         self.dry_run.setEnabled(not self.execution.active)
@@ -337,7 +392,7 @@ class Inspector(QMainWindow):
         self.log.start_live()
         self.current_summary = None
         self.render_summary(None)
-        self.tabs.setCurrentWidget(self.log)
+        self.tabs.setCurrentIndex(0)
         values = {key: field.text().strip() for key, field in self.fields.items()}
         self.execution.start(RunRequest(kind, values[name], values["Config"], values["Parameters"],
                                         values["Metadata"], self.debug.isChecked(), self.no_sleep.isChecked(),
@@ -352,7 +407,7 @@ class Inspector(QMainWindow):
         self.log.show_live()
         self.current_summary = None
         self.render_summary(None)
-        self.tabs.setCurrentWidget(self.log)
+        self.tabs.setCurrentIndex(0)
 
     def append_output(self, text):
         self.log.append_live(text)
@@ -541,11 +596,12 @@ class Inspector(QMainWindow):
         self.summary_layout.addWidget(badge)
         counts = summary.get("verification_counts") or {}
         required = counts.get("required", {}) if isinstance(counts, dict) else {}
-        total = sum(v for v in required.values() if isinstance(v, int))
-        failures = sum(v for k, v in required.items() if str(k).upper() in {"FAIL", "ERROR"})
+        slots = summary.get("test_slot_counts")
+        total = slots.get("total") if isinstance(slots, dict) else sum(v for v in required.values() if isinstance(v, int)) if "verification_counts" in summary else None
+        failures = slots.get("fail") if isinstance(slots, dict) else sum(v for k, v in required.items() if str(k).upper() in {"FAIL", "ERROR", "BLOCKED"}) if "verification_counts" in summary else None
         duration = summary.get("duration_seconds")
         metrics = QHBoxLayout()
-        for value, label in ((str(total), "Verifications"), (str(failures), "Failures"),
+        for value, label in (((str(total) if total is not None else "Unavailable"), "Test slots" if isinstance(slots, dict) else "Verifications"), ((str(failures) if failures is not None else "Unavailable"), "Failed test slots" if isinstance(slots, dict) else "Failures"),
                              (f"{duration:.1f}s" if isinstance(duration, (int, float)) else "Unavailable", "Duration")):
             block = QVBoxLayout()
             number = QLabel(value)
@@ -577,6 +633,17 @@ class Inspector(QMainWindow):
             event.ignore()
             return
         self.generation += 1
+        self.settings.setValue("working_directory", str(self.cwd))
+        for name, field in self.fields.items():
+            self.settings.setValue("files/" + name, field.text())
+        self.settings.setValue("appearance", self.appearance.currentText())
+        self.settings.setValue("wrap", self.wrap.isChecked())
+        self.settings.setValue("additional", self.additional_button.isChecked())
+        self.settings.setValue("geometry", self.saveGeometry())
+        self.settings.setValue("splitter", self.splitter.saveState())
+        self.settings.sync()
+        if self.settings.status() != QSettings.Status.NoError:
+            QMessageBox.warning(self, "Settings", "Could not save UI settings.")
         self.timer.stop()
         self.log.release()
         self.pool.shutdown(wait=False, cancel_futures=True)
@@ -584,7 +651,12 @@ class Inspector(QMainWindow):
 
 
 def main():
+    if sys.platform == "win32":
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Colosseum.Desktop.UI")
     app = QApplication([])
+    app.setWindowIcon(QIcon(str(Path(__file__).parent / "assets" / "colosseum-512.png")))
     window = Inspector()
     window.show()
     return app.exec()

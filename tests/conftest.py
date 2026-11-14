@@ -1,6 +1,13 @@
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def isolated_ui_settings(tmp_path):
+    from PySide6.QtCore import QSettings
+
+    QSettings.setPath(QSettings.Format.IniFormat, QSettings.Scope.UserScope, str(tmp_path))
+
+
 @pytest.fixture
 def isolated_cwd(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
