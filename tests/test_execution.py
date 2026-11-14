@@ -4,8 +4,8 @@ import time
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 
-from colosseum_ui.app import Inspector
-from colosseum_ui.execution import Execution, RunRequest
+from colosseum_extensions.ui.app import Inspector
+from colosseum_extensions.ui.execution import Execution, RunRequest
 
 
 def wait(app, condition):

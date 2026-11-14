@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from colosseum_ui.artifacts import (
+from colosseum_extensions.ui.artifacts import (
     display_status,
     format_summary_text,
     load_run_browser_snapshot,

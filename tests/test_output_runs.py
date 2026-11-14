@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from colosseum_ui.artifacts import (
+from colosseum_extensions.ui.artifacts import (
     find_output_directories,
     find_run_directory,
     list_run_directories,

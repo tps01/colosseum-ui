@@ -8,7 +8,7 @@ Clone the repository next to ``colosseum-core`` when iterating on both packages.
    python -m venv .venv
    python -m pip install -r requirements.txt
    python -m pytest
-   python -m ruff check colosseum_ui
+   python -m ruff check colosseum_extensions
 
 On Linux CI and headless hosts, set ``QT_QPA_PLATFORM=offscreen`` and install
 system libraries such as ``libegl1`` / ``libgl1`` when Qt needs them.
