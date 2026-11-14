@@ -416,7 +416,7 @@ def main(argv: list[str] | None = None) -> int:
                 archive_note,
                 "",
                 "Linux archives are CPU-specific (linux-x86_64 vs linux-aarch64).",
-                "GUI: provided by colosseum-ui using unmodified Qt wheels.",
+                "GUI: provided by colosseum-extensions using unmodified Qt wheels.",
                 "Windows python.org builds usually include it.",
                 "Linux: bake python3-tk (or a Tk-enabled Python) into the host image.",
                 "",

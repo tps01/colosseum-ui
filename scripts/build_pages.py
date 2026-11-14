@@ -15,15 +15,15 @@ except ModuleNotFoundError:  # pragma: no cover
     import tomli as tomllib  # type: ignore[no-redef]
 
 # --- package constants ---
-TITLE = "Colosseum UI"
-SLUG = "ui"
+TITLE = "Colosseum Extensions"
+SLUG = "extensions"
 # (rst_stem, import_module, displayed name)
 API_MODULES: tuple[tuple[str, str, str], ...] = (
-    ("app", "colosseum_ui.app", "colosseum_ui.app"),
-    ("artifacts", "colosseum_ui.artifacts", "colosseum_ui.artifacts"),
-    ("console", "colosseum_ui.console", "colosseum_ui.console"),
-    ("execution", "colosseum_ui.execution", "colosseum_ui.execution"),
-    ("theme", "colosseum_ui.theme", "colosseum_ui.theme"),
+    ("app", "colosseum_extensions.ui.app", "colosseum_extensions.ui.app"),
+    ("artifacts", "colosseum_extensions.ui.artifacts", "colosseum_extensions.ui.artifacts"),
+    ("console", "colosseum_extensions.ui.console", "colosseum_extensions.ui.console"),
+    ("execution", "colosseum_extensions.ui.execution", "colosseum_extensions.ui.execution"),
+    ("theme", "colosseum_extensions.ui.theme", "colosseum_extensions.ui.theme"),
 )
 GUIDES: tuple[str, ...] = (
     "docs/sphinx/source/guides/getting_started.rst",
@@ -127,7 +127,7 @@ def _copy_branding() -> None:
     candidates = (
         REPO_ROOT / ".deps" / "colosseum-core" / "docs" / "sphinx" / "source" / "_static",
         REPO_ROOT.parent / "colosseum-core" / "docs" / "sphinx" / "source" / "_static",
-        REPO_ROOT / "colosseum_ui" / "assets",
+        REPO_ROOT / "colosseum_extensions" / "ui" / "assets",
     )
     for core_static in candidates:
         if not core_static.is_dir():
@@ -148,7 +148,7 @@ def _write_index(api_docs: list[str], guide_names: list[str]) -> None:
         TITLE,
         "=" * len(TITLE),
         "",
-        "Optional Qt desktop runner and inspector for Colosseum.",
+        "Optional Colosseum extensions, including a Qt desktop runner and inspector.",
         "Install beside ``colosseum-core``, then launch with ``colosseum --gui``.",
         "",
         f"`Colosseum core documentation hub <{HUB_URL}>`__",

@@ -31,7 +31,7 @@ jobs:
       - name: Upload dist artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: colosseum-ui-dist
+          name: colosseum-extensions-dist
           path: dist/*
           if-no-files-found: error
 
@@ -46,13 +46,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          path: colosseum-ui
+          path: colosseum-extensions
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Resolve colosseum-core ref
-        working-directory: colosseum-ui
+        working-directory: colosseum-extensions
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -67,7 +67,7 @@ jobs:
           ref: ${{ env.CORE_REF }}
           path: colosseum-core
       - name: Build offline wheelhouse archive
-        working-directory: colosseum-ui
+        working-directory: colosseum-extensions
         run: >
           python scripts/ci/build_offline_wheelhouse.py
           --also-build ../colosseum-core
@@ -78,8 +78,8 @@ jobs:
         with:
           name: offline-${{ matrix.os }}-py${{ matrix.python-version }}
           path: |
-            colosseum-ui/colosseum-ui-offline-*.zip
-            colosseum-ui/colosseum-ui-offline-*.tar.gz
+            colosseum-extensions/colosseum-extensions-offline-*.zip
+            colosseum-extensions/colosseum-extensions-offline-*.tar.gz
           if-no-files-found: error
 
   publish:
@@ -117,10 +117,10 @@ jobs:
             Requires Python 3.10+ and a compatible `colosseum-core` install.
 
             ```bash
-            python -m pip install "./colosseum_ui-<version>-py3-none-any.whl"
+            python -m pip install "./colosseum_extensions-<version>-py3-none-any.whl"
             ```
 
-            Launch with `colosseum --gui`, `colosseum-ui`, or `python -m colosseum_ui`.
+            Launch with `colosseum --gui`, `colosseum-extensions`, or `python -m colosseum_extensions.ui`.
 
             ## Offline wheelhouses
 
@@ -128,16 +128,16 @@ jobs:
             Wheels are under `wheels/`; use the operator scripts at the archive root.
             Pick the archive that matches your OS, **CPU arch**, and Python.
 
-            - Windows: `colosseum-ui-offline-windows-py{3.10,3.12,3.14}.zip` → `install.bat`, then `start_gui.bat`
-            - Linux x86_64: `colosseum-ui-offline-linux-x86_64-py{3.10,3.12,3.14}.tar.gz` → `./install.sh`
-            - Linux aarch64: `colosseum-ui-offline-linux-aarch64-py{3.10,3.12,3.14}.tar.gz` → `./install.sh`
+            - Windows: `colosseum-extensions-offline-windows-py{3.10,3.12,3.14}.zip` → `install.bat`, then `start_gui.bat`
+            - Linux x86_64: `colosseum-extensions-offline-linux-x86_64-py{3.10,3.12,3.14}.tar.gz` → `./install.sh`
+            - Linux aarch64: `colosseum-extensions-offline-linux-aarch64-py{3.10,3.12,3.14}.tar.gz` → `./install.sh`
 
             ```bash
-            tar -xzf colosseum-ui-offline-linux-aarch64-py<ver>.tar.gz -C wheelhouse
+            tar -xzf colosseum-extensions-offline-linux-aarch64-py<ver>.tar.gz -C wheelhouse
             cd wheelhouse && chmod +x install.sh start_*.sh && ./install.sh
             ```
 
-            Docs: https://tps01.github.io/colosseum-ui/
+            Docs: https://tps01.github.io/colosseum-extensions/
 
           files: release-files/*
           fail_on_unmatched_files: true

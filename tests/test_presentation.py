@@ -6,8 +6,8 @@ from pathlib import Path
 from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import QApplication, QLabel
 
-from colosseum_ui.app import Inspector
-from colosseum_ui.artifacts import RunBrowserRow, RunBrowserSnapshot, RunDirectoryEntry
+from colosseum_extensions.ui.app import Inspector
+from colosseum_extensions.ui.artifacts import RunBrowserRow, RunBrowserSnapshot, RunDirectoryEntry
 
 
 def test_themes_and_large_history(tmp_path):
@@ -40,7 +40,7 @@ def test_themes_and_large_history(tmp_path):
 
 
 def test_console_preserves_paged_unicode_and_history():
-    from colosseum_ui.console import _PAGE_CHARS, Console
+    from colosseum_extensions.ui.console import _PAGE_CHARS, Console
     app = QApplication.instance() or QApplication([])
     console = Console()
     raw = ("a\u2603\U0001f600\n" * _PAGE_CHARS) + "final text"
@@ -77,7 +77,7 @@ def test_additional_fields_collapse_without_losing_values(tmp_path):
 
 
 def test_page_controls_live_inside_log_and_only_show_for_multiple_pages(tmp_path):
-    from colosseum_ui.console import _PAGE_CHARS
+    from colosseum_extensions.ui.console import _PAGE_CHARS
     app = QApplication.instance() or QApplication([])
     window = Inspector(tmp_path)
     assert window.tabs.widget(0).layout().indexOf(window.log) >= 0
@@ -121,7 +121,7 @@ def test_status_words_are_colored_and_other_text_is_normal(tmp_path):
 
 
 def test_files_expand_and_collapse_actions(tmp_path):
-    from colosseum_ui.artifacts import RunBrowserRow, RunBrowserSnapshot, RunDirectoryEntry
+    from colosseum_extensions.ui.artifacts import RunBrowserRow, RunBrowserSnapshot, RunDirectoryEntry
     app = QApplication.instance() or QApplication([])
     window = Inspector(tmp_path)
     root = tmp_path / "outputs"
@@ -142,7 +142,7 @@ def test_files_expand_and_collapse_actions(tmp_path):
 
 
 def test_recent_rows_reserve_height_for_name_and_timestamp(tmp_path):
-    from colosseum_ui.artifacts import RunBrowserRow, RunBrowserSnapshot, RunDirectoryEntry
+    from colosseum_extensions.ui.artifacts import RunBrowserRow, RunBrowserSnapshot, RunDirectoryEntry
     QApplication.instance() or QApplication([])
     window = Inspector(tmp_path)
     root = tmp_path / "outputs"
