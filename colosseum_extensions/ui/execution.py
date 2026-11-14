@@ -73,7 +73,10 @@ class Execution(QObject):
         executable = Path(sys.executable)
         if executable.name.lower() == "pythonw.exe":
             executable = executable.with_name("python.exe")
-        self.process.start(str(executable), request.arguments())
+        args = request.arguments()
+        if getattr(sys, "frozen", False):
+            args = args[3:]
+        self.process.start(str(executable), args)
         return True
 
     def started(self):

@@ -9,7 +9,7 @@ description = "Optional extensions for Colosseum, including the desktop runner"
 requires-python = ">=3.10"
 license = "MIT"
 dependencies = [
-  "colosseum-core>=0.18.10,<0.19",
+  "colosseum-core>=0.18.11,<0.19",
   # Qt 6.12 aborts while populating large trees on Python 3.10 (Linux CI).
   "PySide6-Essentials>=6.9.3,<6.12; python_version < '3.11'",
   "PySide6-Essentials>=6.9.3,<7; python_version >= '3.11'",

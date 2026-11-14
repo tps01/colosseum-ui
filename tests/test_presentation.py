@@ -10,6 +10,26 @@ from colosseum_extensions.ui.app import Inspector
 from colosseum_extensions.ui.artifacts import RunBrowserRow, RunBrowserSnapshot, RunDirectoryEntry
 
 
+def test_reopen_remembers_files_and_live_output_tab(tmp_path):
+    app = QApplication.instance() or QApplication([])
+    script = tmp_path / "case.py"
+    script.write_text("pass\n")
+    window = Inspector(tmp_path)
+    window.fields["Test / Suite"].setText(str(script))
+    window.appearance.setCurrentText("Dark")
+    window.close()
+    window = Inspector(tmp_path)
+    assert window.fields["Test / Suite"].text() == str(script)
+    assert window.appearance.currentText() == "Dark"
+    window.tabs.setCurrentIndex(1)
+    window.show_live()
+    assert window.tabs.currentIndex() == 0
+    window.render_summary({"overall_result": "FAIL", "test_slot_counts": {"total": 2, "fail": 1}})
+    assert "Failed test slots" in [label.text() for label in window.summary_content.findChildren(QLabel)]
+    window.close()
+    app.processEvents()
+
+
 def test_themes_and_large_history(tmp_path):
     app = QApplication.instance() or QApplication([])
     window = Inspector(tmp_path)
